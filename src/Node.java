@@ -6,7 +6,8 @@ public class Node {
 	public double latitude;
 	public double longitude;
 	
-	public Node(double latitude, double longitude) {
+	public Node(long osmId, double latitude, double longitude) {
+		this.osmId = osmId;
 		this.latitude = latitude;
 		this.longitude = longitude;
 	}
