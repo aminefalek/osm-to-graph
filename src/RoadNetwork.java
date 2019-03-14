@@ -97,7 +97,7 @@ public class RoadNetwork extends DefaultHandler {
 		roadTypes = new ArrayList<>();
 		valOneway = "no";
 		
-		File xmlDoc = new File(osmFilepath);		
+		File xmlDoc = new File(osmFilepath);
 		try {
 			SAXParserFactory factory = SAXParserFactory.newInstance();			
 			SAXParser saxParser = factory.newSAXParser();
@@ -124,12 +124,13 @@ public class RoadNetwork extends DefaultHandler {
 			wayNodes.add(Long.parseLong(attributes.getValue("ref")));
 		}
 		else if (qName.equalsIgnoreCase("tag") && inWay) {
-			key = attributes.getValue("k");    	 
+			key = attributes.getValue("k");
 			if (key.equals("highway")) {
 				isHighway = true;
 				valHighway = attributes.getValue("v");
-				if (!roadTypes.contains(valHighway))
+				if (!roadTypes.contains(valHighway)) {
 					roadTypes.add(valHighway);
+				}
 			}			
 			if (key.equals("oneway")) {
 				valOneway = attributes.getValue("v");
@@ -170,10 +171,10 @@ public class RoadNetwork extends DefaultHandler {
 				baseNodeOsmId = headNodeOsmId;
 				baseNode = headNode;
 			}
+			wayNodes.clear();
+			valOneway = "no";
+			inWay = false;
 		}
-		wayNodes.clear();
-		valOneway = "no";
-		inWay = false;
 	}
 
 }
