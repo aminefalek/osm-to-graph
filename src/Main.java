@@ -1,7 +1,5 @@
 import java.io.IOException;
-
 import javax.xml.parsers.ParserConfigurationException;
-
 import org.xml.sax.SAXException;
 
 public class Main {
@@ -13,8 +11,16 @@ public class Main {
 		RoadNetwork graph = new RoadNetwork(region);
 		graph.parseOsmFile(osmFilepath);
 		
-		System.out.println(graph.numNodes);
-		System.out.println(graph.numEdges);
+		System.out.println("Total number of nodes and edges:");
+		System.out.println("nodes: " + graph.numNodes);
+		System.out.println("edges: " + graph.numEdges);
+		System.out.println();
+		
+		graph.reduceToLargestConnectedComponent();
+		
+		System.out.println("Largest component number of nodes and edges:");
+		System.out.println("nodes: " + graph.numNodes);
+		System.out.println("edges: " + graph.numEdges);
 	}
 
 }

@@ -1,6 +1,7 @@
 import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
 
@@ -20,7 +21,7 @@ public class RoadNetwork extends DefaultHandler {
 	public int numNodes;
 	public int numEdges;
 	
-	//Graph Adjacency lists for outgoing and incoming arcs
+	//Graph Adjacency lists for outgoing and incoming Edges
 	public ArrayList<ArrayList<Edge>> outgoingEdges;
 	public ArrayList<ArrayList<Edge>> incomingEdges;
 	
@@ -89,6 +90,144 @@ public class RoadNetwork extends DefaultHandler {
 		outgoingEdges.get(baseNode).add(outgoingEdge);
 		incomingEdges.get(headNode).add(incomingEdge);
 		numEdges += 1;
+	}
+	
+	// Reduce graph to largest connected component
+	public void reduceToLargestConnectedComponent() {
+		
+		// Create a copy of outgoing Edges to preserve its contents		
+		ArrayList<ArrayList<Edge>> outgoingEdgesCopy = new ArrayList<>();
+		
+		for (int i=0; i<numNodes; i++) {
+			ArrayList<Edge> edges = outgoingEdges.get(i);
+			ArrayList<Edge> edgesCopy = new ArrayList<>();			
+			for (int j=0; j<edges.size(); j++) {
+				int headNode = edges.get(j).headNode;
+				double length = edges.get(j).length;
+				double travelTime = edges.get(j).travelTime;
+				edgesCopy.add(new Edge(headNode, length, travelTime));
+			}
+			outgoingEdgesCopy.add(edgesCopy);	
+		}
+		
+		// Combine incoming and outgoing Edges Arrays in the outgoingEdges array to make
+		// it an undirected graph
+		for(int i=0; i<numNodes; i++) {
+			ArrayList<Edge> inEdges = incomingEdges.get(i);	
+			ArrayList<Edge> outEdges = outgoingEdges.get(i);
+			for(int j=0; j<inEdges.size(); j++) {
+				boolean found = false;
+				for (int k=0; k<outEdges.size(); k++) {
+					if (inEdges.get(j).headNode == outEdges.get(k).headNode) {
+						found = true;
+						break;
+					}						
+				}
+				if (!found)
+					outEdges.add(inEdges.get(j));
+			}				
+		}
+		
+		// Mark value
+		int round = 1;
+		
+		// Number of connected nodes for a given mark
+		int rep = 0;
+		
+		// Largest set of connected nodes
+		int largestSize = 0;
+		
+		// Mark corresponding to largest set of connected nodes
+		int largestMark = 1;
+		
+		DijkstraAlgorithm dijkstra = new DijkstraAlgorithm(this);
+		
+		// Find Largest Connected Components by marking visited nodes with 'ROUND'
+		// and then count the number of visited nodes for each ROUND value
+		for (int i=0; i<numNodes; i++) {
+			
+			//System.out.println(i);
+			// Run Dijkstra from node i if not visited in a previous processing
+			// and i has at least a single Edge connection
+			if (dijkstra.visitedNodes.get(i) != 0 ||
+					dijkstra.graph.outgoingEdges.get(i).size() == 0)
+				continue;
+		  
+			dijkstra.computeShortestPathCost(i, -1);
+			dijkstra.setVisitedNodeMark(round);
+			
+			rep = 0;
+			for (int j=0; j<numNodes; j++) {
+				if (dijkstra.visitedNodes.get(j) == round)
+					rep += 1;
+			}
+			
+			if (rep > largestSize) {
+				largestSize = rep;
+				largestMark = round;			  			  
+			}
+			
+			if (largestSize >= numNodes/2)
+				break;		  
+			round += 1;
+		}
+		
+		// Set back outgoingEdges array to its original content
+		outgoingEdges = outgoingEdgesCopy;
+		
+		// Set to null all nodes that are not in the Largest Connected Component
+		// and calculate offset (number of nodes to remove)
+		ArrayList<Integer> nodesNewIndexes = new ArrayList<Integer>();
+		int offset = numNodes-largestSize;
+		
+		for (int i=0; i<numNodes; i++) {
+			if (dijkstra.visitedNodes.get(i) != largestMark) {
+				incomingEdges.set(i, null);
+				outgoingEdges.set(i, null);
+				nodes.set(i, null);
+			}
+			nodesNewIndexes.add(-1);
+		}
+		
+		dijkstra = null;
+		
+		// Update nodes indexes
+		for (int i=numNodes-1; i>0; i--) {
+			if (nodes.get(i) == null)
+				offset -=1;			  
+			else
+				nodesNewIndexes.set(i, i-offset);
+		}
+		
+		// Remove all nodes that are not in the Largest Connected Component		
+		incomingEdges.removeAll(Collections.singleton(null));
+		outgoingEdges.removeAll(Collections.singleton(null));
+		nodes.removeAll(Collections.singleton(null));
+		
+		// Update head-nodes indices in the Adjacency Matrix
+		// Update number of Nodes and Edges of the reduced Graph
+		numNodes = nodes.size();
+		numEdges = 0;
+		
+		for (int i=0; i<numNodes; i++) {
+			ArrayList<Edge> outEdges = outgoingEdges.get(i);
+			ArrayList<Edge> inEdges = incomingEdges.get(i);
+			numEdges += inEdges.size();
+			
+			for (int j=0; j<outEdges.size(); j++) {
+				int oldIndex = outEdges.get(j).headNode;
+				int newIndex = nodesNewIndexes.get(oldIndex);
+				if (newIndex != -1)
+					outgoingEdges.get(i).get(j).headNode = newIndex;
+			}			
+			for (int j=0; j<inEdges.size(); j++) {
+				int oldIndex = inEdges.get(j).headNode;
+				int newIndex = nodesNewIndexes.get(oldIndex);
+				if (newIndex != -1)
+					incomingEdges.get(i).get(j).headNode = newIndex;
+			}
+		}	  
+		nodesNewIndexes.clear();
 	}
 	
 	public void parseOsmFile(String osmFilepath) {
@@ -160,7 +299,7 @@ public class RoadNetwork extends DefaultHandler {
 				}
 				
 				else if (valOneway.equals("-1")) {
-					addEdge(headNode, baseNode, length, travelTime);						
+					addEdge(headNode, baseNode, length, travelTime);					
 				}
 				
 				else {
